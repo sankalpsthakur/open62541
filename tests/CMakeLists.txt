@@ -577,6 +577,7 @@ ua_add_test(client/check_client_highlevel.c)
 ua_add_test(check_client_highlevel_read.c)
 ua_add_test(check_client_highlevel_write.c)
 ua_add_test(client/check_client_highlevel_readwrite.c)
+ua_add_test(client/check_client_unmapped_nodeid.c)
 
 if(UA_ENABLE_SUBSCRIPTIONS)
     ua_add_test(client/check_client_subscriptions.c)

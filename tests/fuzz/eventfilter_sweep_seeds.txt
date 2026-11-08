@@ -1,0 +1,32 @@
+SELECT /Message#Value, /Severity
+---
+SELECT /Message, /Severity, /EventType WHERE OFTYPE ns=1;i=5001
+---
+SELECT /Message, /Severity, /EventType WHERE /Severity >= 1000
+---
+SELECT /Message, /Severity, /EventType WHERE $test FOR $test := /Severity >= $value, $value := 1000
+---
+SELECT /Severity WHERE true AND false AND NOT true OR 123 BETWEEN [1,2]
+---
+SELECT /Severity WHERE ((true AND false) AND (NOT true)) OR (123 BETWEEN [1,2])
+---
+SELECT /Severity WHERE $test1 FOR $test1 := $test2, $test2 := OFTYPE ns=1;i=5001
+---
+SELECT $select1 FOR $select1 := /Severity
+---
+SELECT /Severity WHERE /Value == {"UaType": 3,"Value": [1,2,1,5],"Dimension": [2,2]}
+---
+// Comment
+SELECT /Severity
+---
+SELECT /Severity WHERE OFTYPE ns=1;s=DrillEventType AND (/Severity > 100 AND (NOT /1:Diameter BETWEEN [5,6] AND 75 >= /1:FeedForce)) OR /1:Result == "Failed"
+---
+SELECT /Message#Value WHERE /Severity INLIST [1,2,3]
+---
+SELECT /Severity WHERE /Severity == UINT16 7 OR /Severity == DOUBLE 1.5 OR /Message == STRING "x"
+---
+SELECT /Severity WHERE /A == NODEID ns=1;i=1 AND /B == EXPANDEDNODEID nsu=http://x;i=1
+---
+SELECT /Severity WHERE ISNULL /A OR /B LIKE 'a%' OR /C -> ns=0;i=6
+---
+SELECT /Severity WHERE /A == b=AAEC

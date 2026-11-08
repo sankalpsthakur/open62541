@@ -131,6 +131,7 @@ endif()
 # EventFilter parser fuzzer
 if(UA_ENABLE_SUBSCRIPTIONS_EVENTS)
     add_fuzzer(fuzz_eventfilter_parse fuzz_eventfilter_parse.cc)
+    add_fuzzer(fuzz_eventfilter_sweep fuzz_eventfilter_sweep.cc) # fork-only validation
 endif()
 
 # Run fuzzer on existing corpus to avoid regression

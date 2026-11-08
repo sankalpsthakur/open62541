@@ -1,0 +1,71 @@
+name: EventFilter OOM validate
+
+# Fork-only validation for issue 7675. This branch is not the PR branch.
+on:
+  push:
+    branches:
+      - ci-validate-7675
+      - ci-validate-7675-failbefore
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz-oom:
+    runs-on: ubuntu-24.04
+    env:
+      ASAN_OPTIONS: detect_leaks=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure the fuzzing build
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+            -DUA_BUILD_FUZZING=ON -DUA_BUILD_EXAMPLES=OFF \
+            -DUA_ENABLE_SUBSCRIPTIONS_EVENTS=ON -DUA_ENABLE_JSON_ENCODING=ON
+      - name: Build the EventFilter fuzzer and the sweep driver
+        run: cmake --build build --target fuzz_eventfilter_parse fuzz_eventfilter_sweep --parallel 4
+      - name: Run the input from issue 7675
+        run: |
+          printf '#1\000\000\000' > issue7675.bin
+          ./build/bin/fuzz_eventfilter_parse issue7675.bin
+      - name: Parse each seed at every memory limit until it succeeds
+        run: |
+          printf 'x' > once.bin
+          ./build/bin/fuzz_eventfilter_sweep once.bin
+      - name: Fuzz for 120 s with memory limits
+        run: |
+          mkdir -p seeds
+          python3 - <<'PY'
+          import struct
+          seeds = open("tests/fuzz/eventfilter_sweep_seeds.txt").read().split("\n---\n")
+          for i, s in enumerate(seeds):
+              open(f"seeds/s{i:02d}", "wb").write(s.encode() + struct.pack("<I", 0xFFFFFFFF))
+          PY
+          ./build/bin/fuzz_eventfilter_parse -max_total_time=120 -print_final_stats=1 seeds
+
+  unit:
+    if: github.ref_name == 'ci-validate-7675'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install check
+        run: sudo apt-get update && sudo apt-get install -y check
+      - name: Configure with -Werror and ASan
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug \
+            -DUA_BUILD_UNIT_TESTS=ON -DUA_FORCE_WERROR=ON -DUA_MULTITHREADING=100 \
+            -DUA_ENABLE_SUBSCRIPTIONS_EVENTS=ON -DUA_ENABLE_JSON_ENCODING=ON \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+      - name: Build the EventFilter parser tests
+        run: cmake --build build --target check_eventfilter_parser --parallel 4
+      - name: Run the EventFilter parser tests
+        run: ctest --test-dir build -R eventfilter_parser --output-on-failure
